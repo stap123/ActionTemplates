@@ -1,0 +1,52 @@
+name: Basic .NET
+
+on:
+  # allows you to run the workflow manually
+  workflow_dispatch:
+  # run the workflow when a PR is opened targeting the "main" branch
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # the name of your job
+  windows:
+    
+    # the environment that you want to run your job on
+    runs-on: windows-latest
+    
+    # the steps that you would like to run as part of this job
+    steps:
+    
+      # this step checks out your current code for use within the workflow
+      - name: Checkout Code
+        uses: actions/checkout@v3
+     
+      # this step installs .NET so it's available within the VM that this workflow runs on
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          # specifying 'x' at the end will ensure you always setup the latest patch version of .NET
+          dotnet-version: 6.0.x
+
+      # this step restores your NuGet packages
+      # it will find the solution file within the working directory by default
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # this step builds the solution finding the solution/project file at the current working directory
+      # you may want to build one project at a time by duplicating this step for each project. This can be useful to easily identify which project is slow to build etc
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+    
+      # this step runs your tests. It will find all test files in the current working directory
+      # it will publish your test results to a "TestResults" directory in the root of the working directory
+      # you may want to specify a specific test project to run tests from. This can be useful to easily run your unit tests and integration tests separately
+      - name: Test
+        run: dotnet test --configuration Release --no-build --no-restore --verbosity normal --collect:"XPlat Code Coverage" -r:"./TestResults"
+        
+      # this step will find any *.cobertura.xml files working directory and publish them as an artifact of the workflow so they can be viewed at a later date
+      - name: Publish Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: \**\*.cobertura.xml
